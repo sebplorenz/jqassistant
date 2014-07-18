@@ -30,22 +30,29 @@ public abstract class AbstractGraphStore implements Store {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractGraphStore.class);
     private XOManagerFactory xoManagerFactory;
-    private XOManager xoManager;
 
+    private static final ThreadLocal<XOManager> xoManagerTL = new ThreadLocal<>();
+            
     @Override
     public void start(Collection<Class<?>> types) {
         xoManagerFactory = createXOManagerFactory(types);
-        xoManager = xoManagerFactory.createXOManager();
+    }
+    
+    protected XOManager getCurrentXOManager() {
+        if (xoManagerTL.get() == null) {
+            xoManagerTL.set(xoManagerFactory.createXOManager());
+        }
+        return xoManagerTL.get();
     }
 
     @Override
     public void stop() {
-        if (xoManager != null) {
-            if (xoManager.currentTransaction().isActive()) {
+        if (getCurrentXOManager() != null) {
+            if (getCurrentXOManager().currentTransaction().isActive()) {
                 LOGGER.warn("Rolling back an active transaction.");
-                xoManager.currentTransaction().rollback();
+                getCurrentXOManager().currentTransaction().rollback();
             }
-            xoManager.close();
+            getCurrentXOManager().close();
         }
         if (xoManagerFactory != null) {
             closeXOManagerFactory(xoManagerFactory);
@@ -54,42 +61,42 @@ public abstract class AbstractGraphStore implements Store {
 
     @Override
     public <T extends Descriptor> T create(Class<T> type) {
-        T descriptor = xoManager.create(type);
+        T descriptor = getCurrentXOManager().create(type);
         return descriptor;
     }
 
     @Override
     public <S extends Descriptor, R extends Descriptor, T extends Descriptor> R create(S source, Class<R> relationType, T target) {
-        R descriptor = xoManager.create(source, relationType, target);
+        R descriptor = getCurrentXOManager().create(source, relationType, target);
         return descriptor;
     }
 
     @Override
     public <T extends FullQualifiedNameDescriptor> T create(Class<T> type, String fullQualifiedName) {
-        T descriptor = xoManager.create(type);
+        T descriptor = getCurrentXOManager().create(type);
         descriptor.setFullQualifiedName(fullQualifiedName);
         return descriptor;
     }
 
     @Override
     public <T extends Descriptor, C> C migrate(T descriptor, Class<C> concreteType, Class<?>... types) {
-        return xoManager.migrate(descriptor, concreteType, types).as(concreteType);
+        return getCurrentXOManager().migrate(descriptor, concreteType, types).as(concreteType);
     }
 
     @Override
     public <T extends Descriptor> T find(Class<T> type, String fullQualifiedName) {
-        ResultIterable<T> result = xoManager.find(type, fullQualifiedName);
+        ResultIterable<T> result = getCurrentXOManager().find(type, fullQualifiedName);
         return result.hasResult() ? result.getSingleResult() : null;
     }
 
     @Override
     public Result<CompositeRowObject> executeQuery(String query, Map<String, Object> parameters) {
-        return xoManager.createQuery(query).withParameters(parameters).execute();
+        return getCurrentXOManager().createQuery(query).withParameters(parameters).execute();
     }
 
     @Override
     public <Q> Result<Q> executeQuery(Class<Q> query, Map<String, Object> parameters) {
-        return xoManager.createQuery(query).withParameters(parameters).execute();
+        return getCurrentXOManager().createQuery(query).withParameters(parameters).execute();
     }
 
     @Override
@@ -106,7 +113,7 @@ public abstract class AbstractGraphStore implements Store {
         boolean hasResult;
         do {
             beginTransaction();
-            Query<Long> deleteNodesAndRelQuery = xoManager.createQuery(deleteNodesAndRels, Long.class);
+            Query<Long> deleteNodesAndRelQuery = getCurrentXOManager().createQuery(deleteNodesAndRels, Long.class);
             hasResult = deleteNodesAndRelQuery.execute().getSingleResult() > 0;
             commitTransaction();
         } while (hasResult);
@@ -114,23 +121,23 @@ public abstract class AbstractGraphStore implements Store {
 
     @Override
     public void beginTransaction() {
-        xoManager.currentTransaction().begin();
+        getCurrentXOManager().currentTransaction().begin();
     }
 
     @Override
     public void commitTransaction() {
-        xoManager.currentTransaction().commit();
+        getCurrentXOManager().currentTransaction().commit();
     }
 
     @Override
     public void rollbackTransaction() {
-        xoManager.currentTransaction().rollback();
+        getCurrentXOManager().currentTransaction().rollback();
     }
 
     public GraphDatabaseAPI getDatabaseService() {
         beginTransaction();
         try {
-            return getDatabaseAPI(xoManager);
+            return getDatabaseAPI(getCurrentXOManager());
         } finally {
             commitTransaction();
         }
