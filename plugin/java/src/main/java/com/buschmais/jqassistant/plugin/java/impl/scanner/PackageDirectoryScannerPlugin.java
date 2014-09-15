@@ -1,14 +1,13 @@
 package com.buschmais.jqassistant.plugin.java.impl.scanner;
 
 import static com.buschmais.jqassistant.plugin.java.api.scanner.JavaScope.CLASSPATH;
-import static java.util.Arrays.asList;
 
-import java.io.File;
 import java.io.IOException;
 
 import com.buschmais.jqassistant.core.scanner.api.Scanner;
 import com.buschmais.jqassistant.core.scanner.api.Scope;
-import com.buschmais.jqassistant.core.store.api.descriptor.FileDescriptor;
+import com.buschmais.jqassistant.core.store.api.type.FileDescriptor;
+import com.buschmais.jqassistant.plugin.common.api.scanner.FileSystemResource;
 import com.buschmais.jqassistant.plugin.common.impl.scanner.AbstractScannerPlugin;
 import com.buschmais.jqassistant.plugin.java.api.model.PackageDirectoryDescriptor;
 import com.buschmais.jqassistant.plugin.java.impl.scanner.resolver.PackageDescriptorResolver;
@@ -16,7 +15,7 @@ import com.buschmais.jqassistant.plugin.java.impl.scanner.resolver.PackageDescri
 /**
  * Implementation of the {@link AbstractScannerPlugin} for java packages.
  */
-public class PackageDirectoryScannerPlugin extends AbstractScannerPlugin<File> {
+public class PackageDirectoryScannerPlugin extends AbstractScannerPlugin<FileSystemResource> {
 
     private PackageDescriptorResolver packageDescriptorResolver;
 
@@ -26,21 +25,20 @@ public class PackageDirectoryScannerPlugin extends AbstractScannerPlugin<File> {
     }
 
     @Override
-    public Class<? super File> getType() {
-        return File.class;
+    public Class<? super FileSystemResource> getType() {
+        return FileSystemResource.class;
     }
 
     @Override
-    public boolean accepts(File item, String path, Scope scope) throws IOException {
+    public boolean accepts(FileSystemResource item, String path, Scope scope) throws IOException {
         return (CLASSPATH.equals(scope) && item.isDirectory() && path != null && !path.startsWith("/META-INF"));
     }
 
     @Override
-    public Iterable<? extends FileDescriptor> scan(File item, String path, Scope scope, Scanner scanner) throws IOException {
+    public FileDescriptor scan(FileSystemResource item, String path, Scope scope, Scanner scanner) throws IOException {
         String packageName = path.substring(1).replaceAll("/", ".");
         PackageDirectoryDescriptor packageDescriptor = packageDescriptorResolver.resolve(packageName, PackageDirectoryDescriptor.class);
-        packageDescriptor.setFileName(path);
-        return asList(packageDescriptor);
+        return packageDescriptor;
     }
 
 }

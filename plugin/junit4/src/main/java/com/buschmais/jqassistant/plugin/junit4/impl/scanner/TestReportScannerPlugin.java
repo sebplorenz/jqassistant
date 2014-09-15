@@ -1,7 +1,6 @@
 package com.buschmais.jqassistant.plugin.junit4.impl.scanner;
 
 import static com.buschmais.jqassistant.plugin.junit4.api.scanner.JunitScope.TESTREPORTS;
-import static java.util.Arrays.asList;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -19,13 +18,13 @@ import javax.xml.stream.events.XMLEvent;
 
 import com.buschmais.jqassistant.core.scanner.api.Scanner;
 import com.buschmais.jqassistant.core.scanner.api.Scope;
-import com.buschmais.jqassistant.core.store.api.descriptor.FileDescriptor;
-import com.buschmais.jqassistant.plugin.common.api.scanner.StreamFactory;
+import com.buschmais.jqassistant.core.store.api.type.FileDescriptor;
+import com.buschmais.jqassistant.plugin.common.api.scanner.FileSystemResource;
 import com.buschmais.jqassistant.plugin.common.impl.scanner.AbstractScannerPlugin;
 import com.buschmais.jqassistant.plugin.junit4.api.model.TestCaseDescriptor;
 import com.buschmais.jqassistant.plugin.junit4.api.model.TestSuiteDescriptor;
 
-public class TestReportScannerPlugin extends AbstractScannerPlugin<StreamFactory> {
+public class TestReportScannerPlugin extends AbstractScannerPlugin<FileSystemResource> {
 
     private final NumberFormat timeFormat = NumberFormat.getInstance(Locale.US);
 
@@ -34,17 +33,17 @@ public class TestReportScannerPlugin extends AbstractScannerPlugin<StreamFactory
     }
 
     @Override
-    public Class<? super StreamFactory> getType() {
-        return StreamFactory.class;
+    public Class<? super FileSystemResource> getType() {
+        return FileSystemResource.class;
     }
 
     @Override
-    public boolean accepts(StreamFactory item, String path, Scope scope) throws IOException {
+    public boolean accepts(FileSystemResource item, String path, Scope scope) throws IOException {
         return TESTREPORTS.equals(scope) && path.matches(".*TEST-.*\\.xml");
     }
 
     @Override
-    public Iterable<? extends FileDescriptor> scan(StreamFactory item, String path, Scope scope, Scanner scanner) throws IOException {
+    public FileDescriptor scan(FileSystemResource item, String path, Scope scope, Scanner scanner) throws IOException {
         XMLInputFactory inputFactory = XMLInputFactory.newInstance();
         XMLEventReader reader;
         try (InputStream stream = item.createStream()) {
@@ -120,8 +119,7 @@ public class TestReportScannerPlugin extends AbstractScannerPlugin<StreamFactory
                     }
                 }
             }
-            testSuiteDescriptor.setFileName(path);
-            return asList(testSuiteDescriptor);
+            return testSuiteDescriptor;
         } catch (XMLStreamException e) {
             throw new IOException("Cannot read XML document.", e);
         }

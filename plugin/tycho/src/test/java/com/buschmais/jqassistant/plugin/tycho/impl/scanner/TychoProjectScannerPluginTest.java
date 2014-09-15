@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 
 import org.apache.maven.artifact.Artifact;
@@ -28,10 +27,8 @@ import org.junit.runners.Parameterized.Parameters;
 import org.mockito.Mockito;
 
 import com.buschmais.jqassistant.core.scanner.api.Scanner;
-import com.buschmais.jqassistant.core.scanner.api.Scope;
 import com.buschmais.jqassistant.core.store.api.Store;
-import com.buschmais.jqassistant.core.store.api.descriptor.FileDescriptor;
-import com.buschmais.jqassistant.plugin.common.api.type.ArtifactDescriptor;
+import com.buschmais.jqassistant.plugin.common.api.type.ArtifactDirectoryDescriptor;
 
 @RunWith(Parameterized.class)
 public class TychoProjectScannerPluginTest {
@@ -61,9 +58,6 @@ public class TychoProjectScannerPluginTest {
         this.project = mock(MavenProject.class);
         this.matcher = matcher;
 
-        List descriptors = Collections.emptyList();
-        when(scanner.scan(Mockito.any(File.class), Mockito.any(String.class), Mockito.any(Scope.class))).thenReturn(descriptors);
-
         EclipsePluginProject pdeProject = mock(EclipsePluginProject.class);
         BuildProperties properties = mock(BuildProperties.class);
         when(properties.getBinExcludes()).thenReturn(excludes);
@@ -78,8 +72,7 @@ public class TychoProjectScannerPluginTest {
         when(artifact.getArtifactId()).thenReturn("artifact");
         when(project.getArtifact()).thenReturn(artifact);
 
-        ArtifactDescriptor artifactDescriptor = mock(ArtifactDescriptor.class);
-        when(artifactDescriptor.getContains()).thenReturn(new HashSet<FileDescriptor>());
+        ArtifactDirectoryDescriptor artifactDescriptor = mock(ArtifactDirectoryDescriptor.class);
         when(store.create(Mockito.any(Class.class), Mockito.anyString())).thenReturn(artifactDescriptor);
     }
 

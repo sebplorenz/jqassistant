@@ -5,7 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.util.Set;
+import java.util.List;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -24,7 +24,7 @@ import com.buschmais.jqassistant.core.store.impl.EmbeddedGraphStore;
  * Exports the database as a file containing cypher statements.
  */
 @Mojo(name = "export-database")
-public class ExportDatabaseMojo extends AbstractAnalysisMojo {
+public class ExportDatabaseMojo extends AbstractProjectMojo {
 
     private static final String EXPORT_FILE = "jqassistant.cypher";
 
@@ -35,10 +35,15 @@ public class ExportDatabaseMojo extends AbstractAnalysisMojo {
     protected File exportFile;
 
     @Override
-    protected void aggregate(MavenProject baseProject, Set<MavenProject> projects, Store store) throws MojoExecutionException, MojoFailureException {
+    protected boolean isResetStoreBeforeExecution() {
+        return false;
+    }
+
+    @Override
+    protected void aggregate(MavenProject rootModule, List<MavenProject> projects, Store store) throws MojoExecutionException, MojoFailureException {
         EmbeddedGraphStore graphStore = (EmbeddedGraphStore) store;
         GraphDatabaseAPI databaseService = graphStore.getDatabaseService();
-        File file = BaseProjectResolver.getOutputFile(baseProject, exportFile, EXPORT_FILE);
+        File file = ProjectResolver.getOutputFile(rootModule, exportFile, EXPORT_FILE);
         getLog().info("Exporting database to '" + file.getAbsolutePath() + "'");
         store.beginTransaction();
         SubGraph graph = DatabaseSubGraph.from(databaseService);
@@ -49,11 +54,6 @@ public class ExportDatabaseMojo extends AbstractAnalysisMojo {
         } finally {
             store.commitTransaction();
         }
-    }
-
-    @Override
-    protected boolean isResetStoreOnInitialization() {
-        return false;
     }
 
 }

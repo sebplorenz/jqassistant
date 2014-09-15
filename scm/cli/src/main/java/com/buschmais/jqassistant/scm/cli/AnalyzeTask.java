@@ -1,7 +1,5 @@
 package com.buschmais.jqassistant.scm.cli;
 
-import static com.buschmais.jqassistant.scm.cli.Log.getLog;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -9,15 +7,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
-
 import javax.xml.transform.Source;
 import javax.xml.transform.stream.StreamSource;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.io.DirectoryWalker;
 import org.apache.commons.io.IOUtils;
-import org.apache.maven.plugin.MojoExecutionException;
 
 import com.buschmais.jqassistant.core.analysis.api.AnalysisException;
 import com.buschmais.jqassistant.core.analysis.api.AnalysisListener;
@@ -39,10 +34,12 @@ import com.buschmais.jqassistant.core.report.impl.InMemoryReportWriter;
 import com.buschmais.jqassistant.core.report.impl.XmlReportWriter;
 import com.buschmais.jqassistant.core.store.api.Store;
 
+import static com.buschmais.jqassistant.scm.cli.Log.getLog;
+
 /**
  * @author jn4, Kontext E GmbH, 24.01.14
  */
-public class AnalyzeTask extends CommonJqAssistantTask implements OptionsConsumer {
+public class AnalyzeTask extends AbstractJQATask implements OptionsConsumer {
     public static final String RULES_DIRECTORY = "jqassistant-rules";
     public static final String REPORT_XML = "./jqassistant/jqassistant-report.xml";
 
@@ -60,7 +57,7 @@ public class AnalyzeTask extends CommonJqAssistantTask implements OptionsConsume
     }
 
     @Override
-    protected void doTheTask(final Store store) {
+    protected void executeTask(final Store store) {
         getLog().info("Executing analysis.");
         final RuleSet ruleSet = resolveEffectiveRules();
         InMemoryReportWriter inMemoryReportWriter = new InMemoryReportWriter();
@@ -94,6 +91,10 @@ public class AnalyzeTask extends CommonJqAssistantTask implements OptionsConsume
         try {
             final ReportHelper reportHelper = new ReportHelper(getLog());
             reportHelper.verifyConceptResults(inMemoryReportWriter);
+            final int violations = reportHelper.verifyConstraintViolations(inMemoryReportWriter);
+            if(violations > 0) {
+                throw new JqaConstraintViolationException(violations + " constraint(s) violated!");
+            }
             reportHelper.verifyConstraintViolations(inMemoryReportWriter);
         } catch (AnalysisListenerException e) {
             throw new RuntimeException("Cannot print report.", e);
@@ -191,8 +192,6 @@ public class AnalyzeTask extends CommonJqAssistantTask implements OptionsConsume
      * Returns the {@link java.io.File} to write the XML report to.
      * 
      * @return The {@link java.io.File} to write the XML report to.
-     * @throws MojoExecutionException
-     *             If the file cannot be determined.
      */
     private File getXmlReportFile() {
         File selectedXmlReportFile = new File(REPORT_XML);
@@ -210,7 +209,7 @@ public class AnalyzeTask extends CommonJqAssistantTask implements OptionsConsume
     }
 
     @Override
-    protected void addFunctionSpecificOptions(final List<Option> options) {
+    protected void addTaskOptions(final List<Option> options) {
         options.add(new Option("c", "conf", true, "basedir for jQAssistant rules, containing the dir jqassistant-rules and a jqassistant-plugin.xml"));
     }
 }

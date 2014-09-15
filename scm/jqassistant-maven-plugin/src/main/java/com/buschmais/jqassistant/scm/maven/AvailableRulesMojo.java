@@ -16,7 +16,7 @@
 
 package com.buschmais.jqassistant.scm.maven;
 
-import java.util.Set;
+import java.util.List;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -32,19 +32,19 @@ import com.buschmais.jqassistant.core.store.api.Store;
  * Lists all available rules.
  */
 @Mojo(name = "available-rules", defaultPhase = LifecyclePhase.VALIDATE)
-public class AvailableRulesMojo extends AbstractAnalysisMojo {
+public class AvailableRulesMojo extends AbstractProjectMojo {
 
     @Override
-    public void aggregate(MavenProject baseProject, Set<MavenProject> projects, Store store) throws MojoExecutionException, MojoFailureException {
-        getLog().info("Available rules for '" + baseProject.getName() + "'.");
-        RuleSet ruleSet = readRules(baseProject);
-        ReportHelper reportHelper = new ReportHelper(new MavenConsole(getLog()));
-        reportHelper.printRuleSet(ruleSet);
+    protected boolean isResetStoreBeforeExecution() {
+        return false;
     }
 
     @Override
-    protected boolean isResetStoreOnInitialization() {
-        return false;
+    public void aggregate(MavenProject rootModule, List<MavenProject> projects, Store store) throws MojoExecutionException, MojoFailureException {
+        getLog().info("Available rules for '" + rootModule.getName() + "'.");
+        RuleSet ruleSet = readRules(rootModule);
+        ReportHelper reportHelper = new ReportHelper(new MavenConsole(getLog()));
+        reportHelper.printRuleSet(ruleSet);
     }
 
 }

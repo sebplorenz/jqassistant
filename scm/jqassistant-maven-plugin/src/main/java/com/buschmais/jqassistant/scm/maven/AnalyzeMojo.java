@@ -8,7 +8,6 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -22,6 +21,7 @@ import com.buschmais.jqassistant.core.analysis.api.AnalysisListener;
 import com.buschmais.jqassistant.core.analysis.api.AnalysisListenerException;
 import com.buschmais.jqassistant.core.analysis.api.Analyzer;
 import com.buschmais.jqassistant.core.analysis.api.rule.RuleSet;
+import com.buschmais.jqassistant.core.analysis.api.rule.Severity;
 import com.buschmais.jqassistant.core.analysis.impl.AnalyzerImpl;
 import com.buschmais.jqassistant.core.report.api.ReportHelper;
 import com.buschmais.jqassistant.core.report.api.ReportPlugin;
@@ -35,7 +35,7 @@ import com.buschmais.jqassistant.scm.maven.report.JUnitReportWriter;
  * Runs analysis according to the defined rules.
  */
 @Mojo(name = "analyze", defaultPhase = LifecyclePhase.VERIFY)
-public class AnalyzeMojo extends AbstractAnalysisMojo {
+public class AnalyzeMojo extends AbstractProjectMojo {
 
     /**
      * Defines the supported report types.
@@ -50,6 +50,13 @@ public class AnalyzeMojo extends AbstractAnalysisMojo {
     @Parameter(property = "jqassistant.failOnConstraintViolations", defaultValue = "true")
     protected boolean failOnConstraintViolations;
 
+    /**
+     * Severity level for constraint violation failure check. Default value is
+     * {@code Severity.INFO}
+     */
+    @Parameter(property = "jqassistant.severity", defaultValue = "info")
+    protected String severity;
+
     @Parameter(property = "jqassistant.junitReportDirectory")
     private java.io.File junitReportDirectory;
 
@@ -60,9 +67,18 @@ public class AnalyzeMojo extends AbstractAnalysisMojo {
     private Map<String, Object> reportProperties;
 
     @Override
-    public void aggregate(MavenProject baseProject, Set<MavenProject> projects, Store store) throws MojoExecutionException, MojoFailureException {
-        getLog().info("Executing analysis for '" + baseProject.getName() + "'.");
-        final RuleSet ruleSet = resolveEffectiveRules(baseProject);
+    protected boolean isResetStoreBeforeExecution() {
+        return false;
+    }
+
+    @Override
+    public void aggregate(MavenProject rootModule, List<MavenProject> projects, Store store) throws MojoExecutionException, MojoFailureException {
+        getLog().info("Executing analysis for '" + rootModule.getName() + "'.");
+
+        // perform validations
+        validateParameters();
+
+        final RuleSet ruleSet = resolveEffectiveRules(rootModule);
         List<AnalysisListener> reportWriters = new LinkedList<>();
         InMemoryReportWriter inMemoryReportWriter = new InMemoryReportWriter();
         reportWriters.add(inMemoryReportWriter);
@@ -74,7 +90,7 @@ public class AnalyzeMojo extends AbstractAnalysisMojo {
             case JQA:
                 FileWriter xmlReportFileWriter;
                 try {
-                    xmlReportFileWriter = new FileWriter(getXmlReportFile(baseProject));
+                    xmlReportFileWriter = new FileWriter(getXmlReportFile(rootModule));
                 } catch (IOException e) {
                     throw new MojoExecutionException("Cannot create XML report file.", e);
                 }
@@ -87,12 +103,12 @@ public class AnalyzeMojo extends AbstractAnalysisMojo {
                 reportWriters.add(xmlReportWriter);
                 break;
             case JUNIT:
-                reportWriters.add(getJunitReportWriter(baseProject));
+                reportWriters.add(getJunitReportWriter(rootModule));
                 break;
             }
         }
         Map<String, Object> properties = reportProperties != null ? reportProperties : Collections.<String, Object> emptyMap();
-        List<ReportPlugin> reportPlugins = getReportPluginRepository(properties).getReportPlugins();
+        List<ReportPlugin> reportPlugins = pluginRepositoryProvider.getReportPluginRepository(properties).getReportPlugins();
         reportWriters.addAll(reportPlugins);
         CompositeReportWriter reportWriter = new CompositeReportWriter(reportWriters);
         MavenConsole console = new MavenConsole(getLog());
@@ -106,7 +122,7 @@ public class AnalyzeMojo extends AbstractAnalysisMojo {
         store.beginTransaction();
         try {
             reportHelper.verifyConceptResults(inMemoryReportWriter);
-            int violations = reportHelper.verifyConstraintViolations(inMemoryReportWriter);
+            int violations = reportHelper.verifyConstraintViolations(Severity.fromValue(severity), inMemoryReportWriter);
             if (failOnConstraintViolations && violations > 0) {
                 throw new MojoFailureException(violations + " constraints have been violated!");
             }
@@ -139,13 +155,21 @@ public class AnalyzeMojo extends AbstractAnalysisMojo {
      *             If the file cannot be determined.
      */
     private File getXmlReportFile(MavenProject baseProject) throws MojoExecutionException {
-        File selectedXmlReportFile = BaseProjectResolver.getOutputFile(baseProject, xmlReportFile, REPORT_XML);
+        File selectedXmlReportFile = ProjectResolver.getOutputFile(baseProject, xmlReportFile, REPORT_XML);
         selectedXmlReportFile.getParentFile().mkdirs();
         return selectedXmlReportFile;
     }
 
-    @Override
-    protected boolean isResetStoreOnInitialization() {
-        return false;
+    /**
+     * Check parameter values.
+     * 
+     * @throws MojoFailureException
+     *             if any parameter is wrong or missing.
+     */
+    private void validateParameters() throws MojoFailureException {
+        if (Severity.fromValue(severity) == null) {
+            throw new MojoFailureException("Invalid severity '" + severity + "'; use one of " + Arrays.toString(Severity.names()));
+        }
     }
+
 }

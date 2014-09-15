@@ -1,9 +1,10 @@
 package com.buschmais.jqassistant.plugin.jpa2.api.model;
 
+import java.util.List;
 import java.util.Set;
 
-import com.buschmais.jqassistant.core.store.api.descriptor.Descriptor;
-import com.buschmais.jqassistant.core.store.api.descriptor.NamedDescriptor;
+import com.buschmais.jqassistant.core.store.api.type.Descriptor;
+import com.buschmais.jqassistant.core.store.api.type.NamedDescriptor;
 import com.buschmais.jqassistant.plugin.java.api.model.PropertyDescriptor;
 import com.buschmais.jqassistant.plugin.java.api.model.TypeDescriptor;
 import com.buschmais.xo.neo4j.api.annotation.Label;
@@ -47,7 +48,7 @@ public interface PersistenceUnitDescriptor extends Descriptor, NamedDescriptor, 
     void setValidationMode(String validationMode);
 
     @Relation("CONTAINS")
-    Set<TypeDescriptor> getContains();
+    List<TypeDescriptor> getContains();
 
     @Property("sharedCacheMode")
     String getSharedCacheMode();

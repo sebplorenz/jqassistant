@@ -33,7 +33,7 @@ public class FelixBundleScannerPlugin extends AbstractMavenProjectScannerPlugin 
     }
 
     @Override
-    public Iterable<FileDescriptor> scan(MavenProject project, String path, Scope scope, Scanner scanner) throws IOException {
+    public FileDescriptor scan(MavenProject project, String path, Scope scope, Scanner scanner) throws IOException {
         
         File manifest = getManifest(project);
         if (manifest != null) {

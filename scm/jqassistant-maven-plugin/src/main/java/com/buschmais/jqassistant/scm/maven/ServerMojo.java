@@ -19,7 +19,7 @@ package com.buschmais.jqassistant.scm.maven;
 import static edu.emory.mathcs.backport.java.util.Collections.emptyMap;
 
 import java.io.IOException;
-import java.util.Set;
+import java.util.List;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -35,13 +35,19 @@ import com.buschmais.jqassistant.scm.neo4jserver.impl.DefaultServerImpl;
  * Starts an embedded Neo4j server.
  */
 @Mojo(name = "server")
-public class ServerMojo extends AbstractAnalysisMojo {
+public class ServerMojo extends AbstractProjectMojo {
 
     @Override
-    protected void aggregate(MavenProject baseProject, Set<MavenProject> projects, Store store) throws MojoExecutionException, MojoFailureException {
-        Server server = new DefaultServerImpl((EmbeddedGraphStore) store, getScannerPluginRepository(store, emptyMap()), getRulePluginRepository());
+    protected boolean isResetStoreBeforeExecution() {
+        return false;
+    }
+
+    @Override
+    protected void aggregate(MavenProject rootModule, List<MavenProject> projects, Store store) throws MojoExecutionException, MojoFailureException {
+        Server server = new DefaultServerImpl((EmbeddedGraphStore) store, pluginRepositoryProvider.getScannerPluginRepository(store, emptyMap()),
+                pluginRepositoryProvider.getRulePluginRepository());
         server.start();
-        getLog().info("Running server for module " + baseProject.getGroupId() + ":" + baseProject.getArtifactId() + ":" + baseProject.getVersion());
+        getLog().info("Running server for module " + rootModule.getGroupId() + ":" + rootModule.getArtifactId() + ":" + rootModule.getVersion());
         getLog().info("Press <Enter> to finish.");
         try {
             System.in.read();
@@ -51,10 +57,4 @@ public class ServerMojo extends AbstractAnalysisMojo {
             server.stop();
         }
     }
-
-    @Override
-    protected boolean isResetStoreOnInitialization() {
-        return false;
-    }
-
 }

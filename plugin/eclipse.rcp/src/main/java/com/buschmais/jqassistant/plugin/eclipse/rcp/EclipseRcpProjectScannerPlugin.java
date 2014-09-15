@@ -16,28 +16,23 @@ import org.slf4j.LoggerFactory;
 import com.buschmais.jqassistant.core.scanner.api.Scanner;
 import com.buschmais.jqassistant.core.scanner.api.Scope;
 import com.buschmais.jqassistant.core.store.api.Store;
-import com.buschmais.jqassistant.core.store.api.descriptor.FileDescriptor;
-import com.buschmais.jqassistant.plugin.common.api.scanner.StreamFactory;
+import com.buschmais.jqassistant.core.store.api.type.FileDescriptor;
+import com.buschmais.jqassistant.plugin.common.api.scanner.FileSystemResource;
 import com.buschmais.jqassistant.plugin.common.impl.scanner.AbstractScannerPlugin;
 import com.buschmais.jqassistant.plugin.java.api.scanner.JavaScope;
 
-public class EclipseRcpProjectScannerPlugin extends AbstractScannerPlugin<StreamFactory> {
+public class EclipseRcpProjectScannerPlugin extends AbstractScannerPlugin<FileSystemResource> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EclipseRcpProjectScannerPlugin.class);
 
     @Override
-    public boolean accepts(StreamFactory item, String path, Scope scope) throws IOException {
+    public boolean accepts(FileSystemResource item, String path, Scope scope) throws IOException {
         LOGGER.info("Accepts scope: " + scope + " path: " + path);
         return JavaScope.CLASSPATH.equals(scope) && "/plugin.xml".equals(path);
     }
 
     @Override
-    public Class<? super StreamFactory> getType() {
-        return StreamFactory.class;
-    }
-
-    @Override
-    public Iterable<? extends FileDescriptor> scan(StreamFactory item, String path, Scope arg2, Scanner arg3) throws IOException {
+    public FileDescriptor scan(FileSystemResource item, String path, Scope scope, Scanner scanner) throws IOException {
 
         LOGGER.info("Scanning plugin.xml");
 
@@ -54,8 +49,13 @@ public class EclipseRcpProjectScannerPlugin extends AbstractScannerPlugin<Stream
             PluginXmlFileDescriptor result = store.create(PluginXmlFileDescriptor.class);
             result.setFileName("plugin.xml");
             result.setRoot(readElement(document.getRootElement(), store));
-            return Arrays.asList(result);
+            return result;
         }
+    }
+    
+    @Override
+    public Class<? super FileSystemResource> getType() {
+       return FileSystemResource.class;
     }
 
     XmlElement readElement(Element element, Store store) {
@@ -78,7 +78,6 @@ public class EclipseRcpProjectScannerPlugin extends AbstractScannerPlugin<Stream
 
     @Override
     protected void initialize() {
-        //
     }
 
 }
